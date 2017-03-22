@@ -1,7 +1,8 @@
 var _ = require('lodash');
 var Promise = require('bluebird');
 var cassandra = require('cassandra-driver');
-var jsonfile = Promise.promisifyAll(require('jsonfile'));
+var fs = require('fs');
+var jsonStream = require('JSONStream');
 
 var HOST = process.env.HOST || '127.0.0.1';
 var KEYSPACE = process.env.KEYSPACE;
@@ -14,88 +15,94 @@ if (!KEYSPACE) {
 var systemClient = new cassandra.Client({contactPoints: [HOST]});
 var client = new cassandra.Client({ contactPoints: [HOST], keyspace: KEYSPACE});
 
-function buildTableQueriesForDataRows(tableInfo, rows) {
+function buildTableQueryForDataRow(tableInfo, row) {
     var queries = [];
     var isCounterTable = _.some(tableInfo.columns, function(column) {return column.type.code === 5;});
-    for(var i = 0; i < rows.length; i++) {
-        rows[i] = _.omitBy(rows[i], function(item) {return item === null});
-        var query = 'INSERT INTO "' + tableInfo.name + '" ("' + _.keys(rows[i]).join('","') + '") VALUES (?' + _.repeat(',?', _.keys(rows[i]).length-1) + ')';
-        var params = _.values(rows[i]);
-        if (isCounterTable) {
-            var primaryKeys = [];
-            primaryKeys = primaryKeys.concat(_.map(tableInfo.partitionKeys, function(item){return item.name}));
-            primaryKeys = primaryKeys.concat(_.map(tableInfo.clusteringKeys, function(item){return item.name}));
-            var primaryKeyFields = _.pick(rows[i], primaryKeys);
-            var otherKeyFields = _.omit(rows[i], primaryKeys);
-            var setQueries = _.map(_.keys(otherKeyFields), function(key){
-                return '"'+ key +'"="'+ key +'" + ?';
-            });
-            var whereQueries = _.map(_.keys(primaryKeyFields), function(key){
-                return '"'+ key +'"=?';
-            });
-            query = 'UPDATE "' + tableInfo.name + '" SET ' + setQueries.join(', ') + ' WHERE ' + whereQueries.join(' AND ');
-            params = _.values(otherKeyFields).concat(_.values(primaryKeyFields));
+    row = _.omitBy(row, function(item) {return item === null});
+    var query = 'INSERT INTO "' + tableInfo.name + '" ("' + _.keys(row).join('","') + '") VALUES (?' + _.repeat(',?', _.keys(row).length-1) + ')';
+    var params = _.values(row);
+    if (isCounterTable) {
+        var primaryKeys = [];
+        primaryKeys = primaryKeys.concat(_.map(tableInfo.partitionKeys, function(item){return item.name}));
+        primaryKeys = primaryKeys.concat(_.map(tableInfo.clusteringKeys, function(item){return item.name}));
+        var primaryKeyFields = _.pick(row, primaryKeys);
+        var otherKeyFields = _.omit(row, primaryKeys);
+        var setQueries = _.map(_.keys(otherKeyFields), function(key){
+            return '"'+ key +'"="'+ key +'" + ?';
+        });
+        var whereQueries = _.map(_.keys(primaryKeyFields), function(key){
+            return '"'+ key +'"=?';
+        });
+        query = 'UPDATE "' + tableInfo.name + '" SET ' + setQueries.join(', ') + ' WHERE ' + whereQueries.join(' AND ');
+        params = _.values(otherKeyFields).concat(_.values(primaryKeyFields));
+    }
+    params = _.map(params, function(param){
+        if (_.isPlainObject(param)) {
+            return _.omitBy(param, function(item) {return item === null});
         }
-        params = _.map(params, function(param){
-            if (_.isPlainObject(param)) {
-                return _.omitBy(param, function(item) {return item === null});
-            }
-            return param;
-        });
-        queries.push({
-            query: query,
-            params: params,
-        });
-    }
-    return queries;
-}
-
-function writeBatch(chunkQuery) {
-    var chunkBatch = [];
-    for (var i = 0; i < chunkQuery.length; i++) {
-        chunkBatch.push(client.execute(chunkQuery[i].query, chunkQuery[i].params, { prepare: true }));
-    }
-    return Promise.all(chunkBatch);
+        return param;
+    });
+    return {
+        query: query,
+        params: params,
+    };
 }
 
 function processTableImport(table) {
     var rows = [];
     return new Promise(function(resolve, reject) {
         console.log('==================================================');
-        console.log('Reading all rows from ' + table + '.json...');
-        jsonfile.readFileAsync('data/' + table + '.json')
-            .then(function (tableRows){
-                rows = tableRows;
-                if (rows.length === 0) {
-                    return false;
-                }
-                console.log('Reading metadata for table: ' + table);
-                return systemClient.metadata.getTable(KEYSPACE, table);
-            })
+        console.log('Reading metadata for table: ' + table);
+        systemClient.metadata.getTable(KEYSPACE, table)
             .then(function (tableInfo){
                 if (!tableInfo) {
                     resolve();
                     return;
                 }
 
-                console.log('Building queries for data import on table: ' + table);
-                var queries = buildTableQueriesForDataRows(tableInfo, rows);
-
-                console.log('Executing import batches on table: ' + table);
-
-                var chunkedQueries = _.chunk(queries, 10);
+                console.log('Creating read stream from: ' + table + '.json');
+                var jsonfile = fs.createReadStream('data/' + table + '.json', {encoding: 'utf8'});
+                var readStream = jsonfile.pipe(jsonStream.parse('*'));
+                var chunkBatch = [];
                 var progress = 0;
-                return Promise.each(chunkedQueries, function(chunkQuery){
-                    if (progress > 0 && progress%1000 === 0) {
-                        console.log('Written ' + progress + '/' + queries.length + ' rows to table: ' + table);
+                readStream.on('data', function(row){
+                    var query = buildTableQueryForDataRow(tableInfo, row);
+                    chunkBatch.push(client.execute(query.query, query.params, { prepare: true }));
+                    progress++;
+                    if (progress%1000 === 0) {
+                        console.log('Streaming ' + progress + ' rows to table: ' + table);
                     }
-                    progress += chunkQuery.length;
-                    return writeBatch(chunkQuery);
+                    if (chunkBatch.length === 10) {
+                        jsonfile.pause();
+                        Promise.all(chunkBatch)
+                            .then(function (){
+                                chunkBatch = [];
+                                jsonfile.resume();
+                            })
+                            .catch(function (err){
+                                reject(err);
+                            })
+                    }
                 });
-            })
-            .then(function (){
-                console.log('Written all rows to table: ' + table);
-                resolve();
+                jsonfile.on('error', function (err) {
+                    reject(err);
+                });
+                jsonfile.on('end', function () {
+                    console.log('Streaming ' + progress + ' rows to table: ' + table);
+                    if (chunkBatch.length > 0) {
+                        Promise.all(chunkBatch)
+                            .then(function (){
+                                console.log('Done with table: ' + table);
+                                resolve();
+                            })
+                            .catch(function (err){
+                                reject(err);
+                            })
+                    } else {
+                        console.log('Done with table: ' + table);
+                        resolve();
+                    }
+                });
             })
             .catch(function (err){
                 reject(err);
@@ -110,7 +117,7 @@ systemClient.connect()
             systemQuery = "SELECT table_name FROM system_schema.tables WHERE keyspace_name = ?";
         }
 
-        console.log('Getting tables from keyspace: ' + KEYSPACE);
+        console.log('Finding tables in keyspace: ' + KEYSPACE);
         return systemClient.execute(systemQuery, [KEYSPACE]);
     })
     .then(function (result){

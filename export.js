@@ -1,6 +1,7 @@
 var Promise = require('bluebird');
 var cassandra = require('cassandra-driver');
-var jsonfile = require('jsonfile');
+var fs = require('fs');
+var jsonStream = require('JSONStream');
 
 var HOST = process.env.HOST || '127.0.0.1';
 var KEYSPACE = process.env.KEYSPACE;
@@ -14,19 +15,31 @@ var systemClient = new cassandra.Client({contactPoints: [HOST]});
 var client = new cassandra.Client({ contactPoints: [HOST], keyspace: KEYSPACE});
 
 function processTableExport(table) {
-    var rows = [];
-    var query = 'SELECT * FROM "' + table + '"';
-    var options = { prepare : true , fetchSize : 1000 };
-
     console.log('==================================================');
     console.log('Reading table: ' + table);
     return new Promise(function(resolve, reject) {
+        var jsonfile = fs.createWriteStream('data/' + table + '.json');
+        jsonfile.on('error', function (err) {
+            reject(err);
+        });
+        jsonfile.on('finish', function () {
+            console.log('Done with table: ' + table);
+            resolve();
+        });
+        var writeStream = jsonStream.stringify('[', ',', ']');
+        writeStream.pipe(jsonfile);
+
+        var processed = 0;
+        var query = 'SELECT * FROM "' + table + '"';
+        var options = { prepare : true , fetchSize : 1000 };
+
         client.eachRow(query, [], options, function (n, row) {
             var rowObject = {};
             row.forEach(function(value, key){
                 rowObject[key] = value;
             });
-            rows.push(rowObject);
+            processed++;
+            writeStream.write(rowObject);
         }, function (err, result) {
 
             if (err) {
@@ -34,22 +47,15 @@ function processTableExport(table) {
                 return;
             }
 
-            console.log('Loaded ' + rows.length + ' rows from table: ' + table);
+            console.log('Streaming ' + processed + ' rows to: ' + table + '.json');
 
             if (result.nextPage) {
                 result.nextPage();
                 return;
             }
 
-            console.log('Writing all rows into ' + table + '.json...');
-            jsonfile.writeFile('data/' + table + '.json', rows, function (err) {
-                if (err) {
-                    reject(err);
-                    return;
-                }
-                console.log('Done with table: ' + table);
-                resolve();
-            });
+            console.log('Finalizing writes into: ' + table + '.json');
+            writeStream.end();
         });
     });
 }
@@ -61,12 +67,12 @@ systemClient.connect()
             systemQuery = "SELECT table_name FROM system_schema.tables WHERE keyspace_name = ?";
         }
 
-        console.log('Getting tables from keyspace: ' + KEYSPACE);
+        console.log('Finding tables in keyspace: ' + KEYSPACE);
         return systemClient.execute(systemQuery, [KEYSPACE]);
     })
     .then(function (result){
         var tables = [];
-        for(var i=0; i<result.rows.length; i++) {
+        for(var i = 0; i < result.rows.length; i++) {
             tables.push(result.rows[i].table_name);
         }
 
