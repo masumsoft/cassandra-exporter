@@ -1,0 +1,17 @@
+{
+  "name": "cql_exporter",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bluebird": "^3.5.0",
+    "cassandra-driver": "^3.2.0",
+    "jsonfile": "^2.4.0",
+    "lodash": "^4.17.4"
+  }
+}
