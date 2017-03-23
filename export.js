@@ -11,8 +11,17 @@ if (!KEYSPACE) {
     process.exit();
 }
 
-var systemClient = new cassandra.Client({contactPoints: [HOST]});
-var client = new cassandra.Client({ contactPoints: [HOST], keyspace: KEYSPACE});
+var USER = process.env.USER;
+var PASSWORD = process.env.PASSWORD;
+
+var authProvider;
+
+if (USER && PASSWORD) {
+    authProvider = new cassandra.auth.PlainTextAuthProvider(USER, PASSWORD);
+}
+
+var systemClient = new cassandra.Client({contactPoints: [HOST], authProvider: authProvider});
+var client = new cassandra.Client({ contactPoints: [HOST], keyspace: KEYSPACE, authProvider: authProvider});
 
 function processTableExport(table) {
     console.log('==================================================');

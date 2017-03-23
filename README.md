@@ -23,3 +23,14 @@ HOST=127.0.0.1 KEYSPACE=from_keyspace_name TABLE=my_table_name node export.js
 
 HOST=127.0.0.1 KEYSPACE=to_keyspace_name TABLE=my_table_name node import.js
 ```
+
+## To export/import using authentication
+
+```
+KEYSPACE=from_keyspace_name USERNAME=user1 PASSWORD=pa$$word node export.js
+
+KEYSPACE=to_keyspace_name USERNAME=user1 PASSWORD=pa$$word node import.js
+```
+
+Please note that the user requires access to the system tables in order to work properly.
+
