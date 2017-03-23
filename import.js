@@ -63,17 +63,20 @@ function processTableImport(table) {
                 console.log('Creating read stream from: ' + table + '.json');
                 var jsonfile = fs.createReadStream('data/' + table + '.json', {encoding: 'utf8'});
                 var readStream = jsonfile.pipe(jsonStream.parse('*'));
+                var queries = [];
                 var chunkBatch = [];
                 var processed = 0;
                 readStream.on('data', function(row){
                     var query = buildTableQueryForDataRow(tableInfo, row);
-                    chunkBatch.push(client.execute(query.query, query.params, { prepare: true }));
+                    queries.push(query);
                     processed++;
                     if (processed%1000 === 0) {
                         console.log('Streaming ' + processed + ' rows to table: ' + table);
                     }
 
-                    if (chunkBatch.length === 10) {
+                    if (queries.length === 10) {
+                        chunkBatch.push(client.batch(queries, { prepare: true, logged: false }));
+                        queries = [];
                         jsonfile.pause();
                         Promise.all(chunkBatch)
                             .then(function (){
@@ -93,23 +96,23 @@ function processTableImport(table) {
                 var startTime = Date.now();
                 jsonfile.on('end', function () {
                     console.log('Streaming ' + processed + ' rows to table: ' + table);
-                    if (chunkBatch.length > 0) {
-                        Promise.all(chunkBatch)
-                            .then(function (){
-                                var timeTaken = (Date.now() - startTime) / 1000;
-                                var throughput = processed / timeTaken;
-                                console.log('Done with table, throughput: ' + throughput.toFixed(1) + ' rows/s');
-                                resolve();
-                            })
-                            .catch(function (err){
-                                reject(err);
-                            });
-                    } else {
-                        var timeTaken = (Date.now() - startTime) / 1000;
-                        var throughput = processed / timeTaken;
-                        console.log('Done with table, throughput: ' + throughput.toFixed(1) + ' rows/s');
-                        resolve();
+                    if (queries.length > 1) {
+                        chunkBatch.push(client.batch(queries, { prepare: true, logged: false }));
                     }
+                    else if (queries.length === 1) {
+                        chunkBatch.push(client.execute(queries[0].query, queries[0].params, { prepare: true }));
+                    }
+
+                    Promise.all(chunkBatch)
+                        .then(function (){
+                            var timeTaken = (Date.now() - startTime) / 1000;
+                            var throughput = processed / timeTaken;
+                            console.log('Done with table, throughput: ' + throughput.toFixed(1) + ' rows/s');
+                            resolve();
+                        })
+                        .catch(function (err){
+                            reject(err);
+                        });
                 });
             })
             .catch(function (err){
