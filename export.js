@@ -22,14 +22,18 @@ function processTableExport(table) {
         jsonfile.on('error', function (err) {
             reject(err);
         });
+
+        var processed = 0;
+        var startTime = Date.now();
         jsonfile.on('finish', function () {
-            console.log('Done with table: ' + table);
+            var timeTaken = (Date.now() - startTime) / 1000;
+            var throughput = processed / timeTaken;
+            console.log('Done with table, throughput: ' + throughput.toFixed(1) + ' rows/s');
             resolve();
         });
         var writeStream = jsonStream.stringify('[', ',', ']');
         writeStream.pipe(jsonfile);
 
-        var processed = 0;
         var query = 'SELECT * FROM "' + table + '"';
         var options = { prepare : true , fetchSize : 1000 };
 
@@ -74,6 +78,10 @@ systemClient.connect()
         var tables = [];
         for(var i = 0; i < result.rows.length; i++) {
             tables.push(result.rows[i].table_name);
+        }
+
+        if (process.env.TABLE) {
+            return processTableExport(process.env.TABLE);
         }
 
         return Promise.each(tables, function(table){
