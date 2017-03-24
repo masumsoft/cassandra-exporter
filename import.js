@@ -157,8 +157,17 @@ systemClient.connect()
     .then(function (){
         console.log('==================================================');
         console.log('Completed importing all tables to keyspace: ' + KEYSPACE);
-        systemClient.shutdown();
-        client.shutdown();
+        var gracefulShutdown = [];
+        gracefulShutdown.push(systemClient.shutdown());
+        gracefulShutdown.push(client.shutdown());
+        Promise.all(gracefulShutdown)
+            .then(function (){
+                process.exit();
+            })
+            .catch(function (err){
+                console.log(err);
+                process.exit(1);
+            });
     })
     .catch(function (err){
         console.log(err);
