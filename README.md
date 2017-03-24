@@ -1,3 +1,17 @@
+Cassandra exporter is a data export / import tool for cassandra that is simple to use and works for unicode and complex data types. It is developed in Javascript and the exported data is stored in JSON formatted files.
+
+# Why another tool?
+
+Cassandra has some great tools for exporting and importing data:
+
+* snapshots
+* sstable2json
+* CQL's COPY FROM/TO
+
+But the problem is snapshots and sstable2json are not that straight forward to use. They are intended for moving large data sets and to me unnecessarily complicated to use for day to day development.
+
+The COPY command was intended for development or moving small datasets, but is not reliable. Because it uses csv exports which breaks for complex data types and non ascii encodings if you try to import that data. So for development purposes and for moving small datasets (< few million rows per table) I needed something that works robustly and is simple to use.
+
 # Usage
 
 ## To export all table data from a keyspace
