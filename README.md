@@ -65,3 +65,15 @@ HOST=127.0.0.1 KEYSPACE=from_keyspace_name TABLE=my_table_name node export.js
 HOST=127.0.0.1 KEYSPACE=from_keyspace_name TABLE=my_table_name node import.js
 ```
 
+# Note
+
+Cassandra exporter only export / import data. It expects the tables to be present beforehand. If you need to also export schema and the indexes, then you could easily use cqlsh and the source command to export / import the schema before moving the data.
+
+```
+// To export keyspace schema, use cqlsh like this
+cqlsh -e "DESC KEYSPACE mykeyspace" > my_keyspace_schema.cql
+
+// To import keyspace schema open the cqlsh shell
+// in the same directory of `my_keyspace_schema.cql`, then
+source 'my_keyspace_schema.cql'
+```
