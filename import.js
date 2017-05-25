@@ -79,17 +79,18 @@ function processTableImport(table) {
                     var query = buildTableQueryForDataRow(tableInfo, row);
                     queries.push(query);
                     processed++;
-                    if (processed%1000 === 0) {
-                        console.log('Streaming ' + processed + ' rows to table: ' + table);
-                    }
 
                     if (queries.length === 10) {
                         chunkBatch.push(client.batch(queries, { prepare: true, logged: false }));
                         queries = [];
+                    }
+
+                    if (processed%1000 === 0) {
+                        console.log('Streaming ' + processed + ' rows to table: ' + table);
                         jsonfile.pause();
                         Promise.all(chunkBatch)
                             .then(function (){
-                                chunkBatch = [];
+                                chunkBatch = chunkBatch.slice(100);
                                 jsonfile.resume();
                             })
                             .catch(function (err){
@@ -156,17 +157,15 @@ systemClient.connect()
     })
     .then(function (){
         console.log('==================================================');
-        console.log('Completed importing all tables to keyspace: ' + KEYSPACE);
         var gracefulShutdown = [];
         gracefulShutdown.push(systemClient.shutdown());
         gracefulShutdown.push(client.shutdown());
         Promise.all(gracefulShutdown)
             .then(function (){
-                process.exit();
+                console.log('Completed importing to keyspace: ' + KEYSPACE);
             })
             .catch(function (err){
                 console.log(err);
-                process.exit(1);
             });
     })
     .catch(function (err){
