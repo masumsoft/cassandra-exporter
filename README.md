@@ -64,6 +64,9 @@ HOST=127.0.0.1 KEYSPACE=from_keyspace_name TABLE=my_table_name node export.js
 
 HOST=127.0.0.1 KEYSPACE=from_keyspace_name TABLE=my_table_name node import.js
 ```
+# Usage (Docker)
+
+The Dockerfiles provide a volume mounted at /data and expect the environment variables `HOST` and `KEYSPACE`. `Dockerfile.import` provides `import.js` functionality. `Dockerfile.export` provides `export.js` functionality. By using the -v option of `docker run` this provides the facility to store the output/input directory in an arbitrary location. It also allows running cassandra-export from any location. This requires [Docker](https://www.docker.com/) to be installed.
 
 # Note
 
