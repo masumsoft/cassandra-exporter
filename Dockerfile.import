@@ -1,0 +1,11 @@
+FROM node:8.5.0-alpine
+
+ADD import.js import.js
+ADD index.js index.js
+ADD package.json package.json
+
+RUN npm install
+
+VOLUME /data
+
+ENTRYPOINT node import.js
