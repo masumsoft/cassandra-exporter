@@ -4,6 +4,7 @@ var fs = require('fs');
 var jsonStream = require('JSONStream');
 
 var HOST = process.env.HOST || '127.0.0.1';
+var PORT = process.env.PORT || 9042;
 var KEYSPACE = process.env.KEYSPACE;
 
 if (!KEYSPACE) {
@@ -20,8 +21,8 @@ if (USER && PASSWORD) {
     authProvider = new cassandra.auth.PlainTextAuthProvider(USER, PASSWORD);
 }
 
-var systemClient = new cassandra.Client({contactPoints: [HOST], authProvider: authProvider});
-var client = new cassandra.Client({ contactPoints: [HOST], keyspace: KEYSPACE, authProvider: authProvider});
+var systemClient = new cassandra.Client({contactPoints: [HOST], authProvider: authProvider, protocolOptions: {port: [PORT]}});
+var client = new cassandra.Client({ contactPoints: [HOST], keyspace: KEYSPACE, authProvider: authProvider, protocolOptions: {port: [PORT]}});
 
 function processTableExport(table) {
     console.log('==================================================');

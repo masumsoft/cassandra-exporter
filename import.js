@@ -5,6 +5,7 @@ var fs = require('fs');
 var jsonStream = require('JSONStream');
 
 var HOST = process.env.HOST || '127.0.0.1';
+var PORT = process.env.PORT || 9042;
 var KEYSPACE = process.env.KEYSPACE;
 
 if (!KEYSPACE) {
@@ -21,8 +22,8 @@ if (USER && PASSWORD) {
     authProvider = new cassandra.auth.PlainTextAuthProvider(USER, PASSWORD);
 }
 
-var systemClient = new cassandra.Client({contactPoints: [HOST], authProvider: authProvider});
-var client = new cassandra.Client({ contactPoints: [HOST], keyspace: KEYSPACE, authProvider: authProvider});
+var systemClient = new cassandra.Client({contactPoints: [HOST], authProvider: authProvider, protocolOptions: {port: [PORT]}});
+var client = new cassandra.Client({ contactPoints: [HOST], keyspace: KEYSPACE, authProvider: authProvider, protocolOptions: {port: [PORT]}});
 
 function buildTableQueryForDataRow(tableInfo, row) {
     var queries = [];
@@ -47,7 +48,12 @@ function buildTableQueryForDataRow(tableInfo, row) {
     }
     params = _.map(params, function(param){
         if (_.isPlainObject(param)) {
-            return _.omitBy(param, function(item) {return item === null});
+            if (param.type === 'Buffer') {
+                return Buffer.from(param);
+            }
+            else {
+                return _.omitBy(param, function(item) {return item === null});
+            }
         }
         return param;
     });
@@ -72,25 +78,19 @@ function processTableImport(table) {
                 console.log('Creating read stream from: ' + table + '.json');
                 var jsonfile = fs.createReadStream('data/' + table + '.json', {encoding: 'utf8'});
                 var readStream = jsonfile.pipe(jsonStream.parse('*'));
-                var queries = [];
-                var chunkBatch = [];
+                var queryPromises = [];
                 var processed = 0;
                 readStream.on('data', function(row){
                     var query = buildTableQueryForDataRow(tableInfo, row);
-                    queries.push(query);
+                    queryPromises.push(client.execute(query.query, query.params, { prepare: true}));
                     processed++;
-
-                    if (queries.length === 10) {
-                        chunkBatch.push(client.batch(queries, { prepare: true, logged: false }));
-                        queries = [];
-                    }
 
                     if (processed%1000 === 0) {
                         console.log('Streaming ' + processed + ' rows to table: ' + table);
                         jsonfile.pause();
-                        Promise.all(chunkBatch)
+                        Promise.all(queryPromises)
                             .then(function (){
-                                chunkBatch = chunkBatch.slice(100);
+                                queryPromises = [];
                                 jsonfile.resume();
                             })
                             .catch(function (err){
@@ -106,14 +106,7 @@ function processTableImport(table) {
                 var startTime = Date.now();
                 jsonfile.on('end', function () {
                     console.log('Streaming ' + processed + ' rows to table: ' + table);
-                    if (queries.length > 1) {
-                        chunkBatch.push(client.batch(queries, { prepare: true, logged: false }));
-                    }
-                    else if (queries.length === 1) {
-                        chunkBatch.push(client.execute(queries[0].query, queries[0].params, { prepare: true }));
-                    }
-
-                    Promise.all(chunkBatch)
+                    Promise.all(queryPromises)
                         .then(function (){
                             var timeTaken = (Date.now() - startTime) / 1000;
                             var throughput = processed / timeTaken;
