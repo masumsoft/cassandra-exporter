@@ -37,7 +37,7 @@ function processTableExport(table) {
         var startTime = Date.now();
         jsonfile.on('finish', function () {
             var timeTaken = (Date.now() - startTime) / 1000;
-            var throughput = processed / timeTaken;
+            var throughput = timeTaken ? processed / timeTaken : 0.00;
             console.log('Done with table, throughput: ' + throughput.toFixed(1) + ' rows/s');
             resolve();
         });
