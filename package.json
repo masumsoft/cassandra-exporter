@@ -1,9 +1,10 @@
 {
   "name": "cql_exporter",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "pkg -t node6-linux,node6-macos,node6-win export.js && pkg -t node6-linux,node6-macos,node6-win import.js"
   },
   "author": {
     "name": "Mahafuzur Rahman",
