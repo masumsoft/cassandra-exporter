@@ -52,7 +52,13 @@ function buildTableQueryForDataRow(tableInfo, row) {
                 return Buffer.from(param);
             }
             else {
-                return _.omitBy(param, function(item) {return item === null});
+                var omittedParams = _.omitBy(param, function(item) {return item === null});
+                for (key in omittedParams) {
+                    if (_.isObject(omittedParams[key]) && omittedParams[key].type === 'Buffer') {
+                        omittedParams[key] = Buffer.from(omittedParams[key]);
+                    }
+                }
+                return omittedParams;
             }
         }
         return param;
