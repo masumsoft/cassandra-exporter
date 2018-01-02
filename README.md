@@ -47,9 +47,9 @@ HOST=127.0.0.1 KEYSPACE=to_keyspace_name TABLE=my_table_name ./import
 ## To export/import using authentication
 
 ```
-KEYSPACE=from_keyspace_name USERNAME=user1 PASSWORD=pa$$word ./export
+KEYSPACE=from_keyspace_name USER=user1 PASSWORD=pa$$word ./export
 
-KEYSPACE=to_keyspace_name USERNAME=user1 PASSWORD=pa$$word ./import
+KEYSPACE=to_keyspace_name USER=user1 PASSWORD=pa$$word ./import
 ```
 
 Please note that the user requires access to the system tables in order to work properly.
