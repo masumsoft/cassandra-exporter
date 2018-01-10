@@ -15,6 +15,7 @@ if (!KEYSPACE) {
 
 var USER = process.env.USER;
 var PASSWORD = process.env.PASSWORD;
+var DIRECTORY = process.env.DIRECTORY || "./data";
 
 var authProvider;
 
@@ -82,7 +83,7 @@ function processTableImport(table) {
                 }
 
                 console.log('Creating read stream from: ' + table + '.json');
-                var jsonfile = fs.createReadStream('data/' + table + '.json', {encoding: 'utf8'});
+                var jsonfile = fs.createReadStream(DIRECTORY + '/' + table + '.json', {encoding: 'utf8'});
                 var readStream = jsonfile.pipe(jsonStream.parse('*'));
                 var queryPromises = [];
                 var processed = 0;
