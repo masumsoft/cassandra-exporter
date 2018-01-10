@@ -14,7 +14,7 @@ if (!KEYSPACE) {
 
 var USER = process.env.USER;
 var PASSWORD = process.env.PASSWORD;
-
+var DIRECTORY = process.env.DIRECTORY || "./data";
 var authProvider;
 
 if (USER && PASSWORD) {
@@ -28,7 +28,7 @@ function processTableExport(table) {
     console.log('==================================================');
     console.log('Reading table: ' + table);
     return new Promise(function(resolve, reject) {
-        var jsonfile = fs.createWriteStream('data/' + table + '.json');
+        var jsonfile = fs.createWriteStream(DIRECTORY +"/" + table + '.json');
         jsonfile.on('error', function (err) {
             reject(err);
         });
