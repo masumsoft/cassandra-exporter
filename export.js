@@ -49,9 +49,28 @@ function processTableExport(table) {
 
         client.eachRow(query, [], options, function (n, row) {
             var rowObject = {};
-            row.forEach(function(value, key){
-                rowObject[key] = value;
+            row.forEach(function (value, key) {
+                if (typeof value === 'number') {
+                    if (Number.isNaN(value)) {
+                        rowObject[key] = {
+                            type: "NOT_A_NUMBER"
+                        }
+                    } else if (Number.isFinite(value)) {
+                        rowObject[key] = value;
+                    } else if (value > 0) {
+                        rowObject[key] = {
+                            type: "POSITIVE_INFINITY"
+                        }
+                    } else {
+                        rowObject[key] = {
+                            type: "NEGATIVE_INFINITY"
+                        }
+                    }
+                } else {
+                    rowObject[key] = value;
+                }
             });
+
             processed++;
             writeStream.write(rowObject);
         }, function (err, result) {

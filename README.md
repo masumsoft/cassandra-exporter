@@ -68,6 +68,12 @@ HOST=127.0.0.1 KEYSPACE=from_keyspace_name TABLE=my_table_name node import.js
 
 The Dockerfiles provide a volume mounted at /data and expect the environment variables `HOST` and `KEYSPACE`. `Dockerfile.import` provides `import.js` functionality. `Dockerfile.export` provides `export.js` functionality. By using the -v option of `docker run` this provides the facility to store the output/input directory in an arbitrary location. It also allows running cassandra-export from any location. This requires [Docker](https://www.docker.com/) to be installed.
 
+# Running tests
+
+To run a test in the tests folder, for example `numbers.js`, run the command `node tests/numbers.js` at the root of the repo. A localhost cassandra must be running.
+
+Tests use recent node.js features and requires Node.js 8.
+
 # Note
 
 Cassandra exporter only export / import data. It expects the tables to be present beforehand. If you need to also export schema and the indexes, then you could easily use cqlsh and the source command to export / import the schema before moving the data.
