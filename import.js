@@ -51,8 +51,13 @@ function buildTableQueryForDataRow(tableInfo, row) {
         if (_.isPlainObject(param)) {
             if (param.type === 'Buffer') {
                 return Buffer.from(param);
-            }
-            else {
+            } else if (param.type === 'NOT_A_NUMBER') {
+                return Number.NaN;
+            } else if (param.type === 'POSITIVE_INFINITY') {
+                return Number.POSITIVE_INFINITY;
+            } else if (param.type === 'NEGATIVE_INFINITY') {
+                return Number.NEGATIVE_INFINITY;
+            } else {
                 var omittedParams = _.omitBy(param, function(item) {return item === null});
                 for (key in omittedParams) {
                     if (_.isObject(omittedParams[key]) && omittedParams[key].type === 'Buffer') {
