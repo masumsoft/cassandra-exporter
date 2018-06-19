@@ -1,10 +1,10 @@
 {
   "name": "cql_exporter",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "pkg -t node6-linux,node6-macos,node6-win export.js && pkg -t node6-linux,node6-macos,node6-win import.js"
+    "build": "pkg -t node8-linux,node8-macos,node8-win export.js && pkg -t node8-linux,node8-macos,node8-win import.js"
   },
   "author": {
     "name": "Mahafuzur Rahman",
@@ -21,5 +21,8 @@
     "bluebird": "^3.5.0",
     "cassandra-driver": "^3.2.0",
     "lodash": "^4.17.4"
+  },
+  "devDependencies": {
+    "pkg": "^4.3.1"
   }
 }
