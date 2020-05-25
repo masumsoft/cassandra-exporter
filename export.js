@@ -15,10 +15,16 @@ if (!KEYSPACE) {
 var USER = process.env.USER;
 var PASSWORD = process.env.PASSWORD;
 var DIRECTORY = process.env.DIRECTORY || "./data";
-var authProvider;
+var USE_SSL = process.env.USE_SSL;
 
+var authProvider;
 if (USER && PASSWORD) {
     authProvider = new cassandra.auth.PlainTextAuthProvider(USER, PASSWORD);
+}
+
+var sslOptions;
+if (USE_SSL) {
+    sslOptions = { rejectUnauthorized: false };
 }
 
 var systemClient = new cassandra.Client({contactPoints: [HOST], authProvider: authProvider, protocolOptions: {port: [PORT]}});

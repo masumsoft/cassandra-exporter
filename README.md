@@ -54,6 +54,13 @@ KEYSPACE=to_keyspace_name USER=user1 PASSWORD=pa$$word ./import
 
 Please note that the user requires access to the system tables in order to work properly.
 
+## To export/import using SSL/TLS
+
+```
+KEYSPACE=from_keyspace_name USER=user1 PASSWORD=pa$$word USE_SSL=true ./export
+
+KEYSPACE=from_keyspace_name USER=user1 PASSWORD=pa$$word USE_SSL=true ./import
+```
 
 # Usage (from NodeJS)
 

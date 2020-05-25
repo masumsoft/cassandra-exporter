@@ -16,15 +16,20 @@ if (!KEYSPACE) {
 var USER = process.env.USER;
 var PASSWORD = process.env.PASSWORD;
 var DIRECTORY = process.env.DIRECTORY || "./data";
+var USE_SSL = process.env.USE_SSL;
 
 var authProvider;
-
 if (USER && PASSWORD) {
     authProvider = new cassandra.auth.PlainTextAuthProvider(USER, PASSWORD);
 }
 
-var systemClient = new cassandra.Client({contactPoints: [HOST], authProvider: authProvider, protocolOptions: {port: [PORT]}});
-var client = new cassandra.Client({ contactPoints: [HOST], keyspace: KEYSPACE, authProvider: authProvider, protocolOptions: {port: [PORT]}});
+var sslOptions;
+if (USE_SSL) {
+    sslOptions = { rejectUnauthorized: false };
+}
+
+var systemClient = new cassandra.Client({contactPoints: [HOST], authProvider: authProvider, protocolOptions: {port: [PORT]}, sslOptions: sslOptions });
+var client = new cassandra.Client({ contactPoints: [HOST], keyspace: KEYSPACE, authProvider: authProvider, protocolOptions: {port: [PORT]}, sslOptions: sslOptions });
 
 function buildTableQueryForDataRow(tableInfo, row) {
     var queries = [];
