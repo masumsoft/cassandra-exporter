@@ -23,6 +23,6 @@
     "lodash": "^4.17.21"
   },
   "devDependencies": {
-    "pkg": "^4.4.8"
+    "pkg": "^5.8.1"
   }
 }
