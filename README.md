@@ -44,6 +44,13 @@ HOST=127.0.0.1 KEYSPACE=from_keyspace_name TABLE=my_table_name ./export
 HOST=127.0.0.1 KEYSPACE=to_keyspace_name TABLE=my_table_name ./import
 ```
 
+## To export multiple tables in a keyspace
+
+```
+HOST=127.0.0.1 KEYSPACE=from_keyspace_name TABLE="my_table_name,my_other_table_name" ./export
+```
+
+
 ## To export/import using authentication
 
 ```
